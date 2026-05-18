@@ -150,7 +150,7 @@
 <div id="title" class="overlay">
   <h1>TURD POLISHER</h1>
   <p>Polish that turd to a mirror shine.</p>
-  <p style="font-size:14px; opacity:.8;">Drag to polish • 1-4 to switch tools</p>
+  <p style="font-size:14px; opacity:.8;">Drag to polish • 1-4 switch tools • WASD rotate turd</p>
   <button id="start">PRESS TO POLISH</button>
 </div>
 
@@ -525,22 +525,24 @@ class PolishTexture {
     }
     this.tex.needsUpdate = true;
   }
-  paint(uv, channel, sign, strength, radius){
+  // rU = radius along U (tube length), rV = radius along V (tube circumference, wraps)
+  // Anisotropic: big rV cleans full circumference with one drag along turd length.
+  paint(uv, channel, sign, strength, rU, rV){
+    rV = rV || rU;
     const cx = uv.x * TEX_W;
     const cy = uv.y * TEX_H;
-    const r = radius;
-    const r2 = r*r;
-    const y0 = Math.floor(cy - r), y1 = Math.ceil(cy + r);
-    const x0 = Math.max(0, Math.floor(cx - r));
-    const x1 = Math.min(TEX_W-1, Math.ceil(cx + r));
+    const x0 = Math.max(0, Math.floor(cx - rU));
+    const x1 = Math.min(TEX_W-1, Math.ceil(cx + rU));
+    const y0 = Math.floor(cy - rV), y1 = Math.ceil(cy + rV);
     for(let yRaw = y0; yRaw <= y1; yRaw++){
       const y = ((yRaw % TEX_H) + TEX_H) % TEX_H;
       const dyRaw = yRaw - cy;
       for(let x = x0; x <= x1; x++){
         const dx = x - cx;
-        const d2 = dx*dx + dyRaw*dyRaw;
-        if(d2 > r2) continue;
-        const fall = (1 - d2/r2);
+        const dnx = dx/rU, dny = dyRaw/rV;
+        const d2 = dnx*dnx + dny*dny;
+        if(d2 > 1) continue;
+        const fall = (1 - d2);
         const w = fall*fall * strength;
         const idx = (y*TEX_W + x)*4 + channel;
         const cur = this.data[idx];
@@ -566,11 +568,12 @@ class PolishTexture {
 /* =====================================================================
    TOOLS
    ===================================================================*/
+// rU = along tube length, rV = around circumference (large = cleans full circle per drag)
 const TOOLS = {
-  brush: { glyph:'🪥', channel:0, sign:-1, strength:7.5, radius:16, sfx:'scrub', color:0xffb160, particle:null },
-  cloth: { glyph:'🧽', channel:1, sign:-1, strength:6.5, radius:22, sfx:'wipe',  color:0x88bbff, particle:null },
-  wax:   { glyph:'💧', channel:2, sign: 1, strength:7.0, radius:18, sfx:'wax',   color:0xffd84a, particle:'wax' },
-  spray: { glyph:'✨', channel:3, sign: 1, strength:8.0, radius:24, sfx:'spray', color:0xff9ad7, particle:'sparkle' }
+  brush: { glyph:'🪥', channel:0, sign:-1, strength:6.0, rU:18, rV:64, sfx:'scrub', color:0xffb160, particle:null },
+  cloth: { glyph:'🧽', channel:1, sign:-1, strength:5.5, rU:24, rV:64, sfx:'wipe',  color:0x88bbff, particle:null },
+  wax:   { glyph:'💧', channel:2, sign: 1, strength:6.0, rU:20, rV:64, sfx:'wax',   color:0xffd84a, particle:'wax' },
+  spray: { glyph:'✨', channel:3, sign: 1, strength:7.0, rU:26, rV:64, sfx:'spray', color:0xff9ad7, particle:'sparkle' }
 };
 
 /* =====================================================================
@@ -840,11 +843,22 @@ window.addEventListener('pointerup', ()=>{
   document.getElementById('cursor').classList.remove('click');
 });
 
+const wasd = {w:false,a:false,s:false,d:false};
 window.addEventListener('keydown', e=>{
   if(e.key==='1') selectTool('brush');
   else if(e.key==='2') selectTool('cloth');
   else if(e.key==='3') selectTool('wax');
   else if(e.key==='4') selectTool('spray');
+  if(e.key==='w'||e.key==='W') wasd.w=true;
+  if(e.key==='a'||e.key==='A') wasd.a=true;
+  if(e.key==='s'||e.key==='S') wasd.s=true;
+  if(e.key==='d'||e.key==='D') wasd.d=true;
+});
+window.addEventListener('keyup', e=>{
+  if(e.key==='w'||e.key==='W') wasd.w=false;
+  if(e.key==='a'||e.key==='A') wasd.a=false;
+  if(e.key==='s'||e.key==='S') wasd.s=false;
+  if(e.key==='d'||e.key==='D') wasd.d=false;
 });
 document.querySelectorAll('.tool').forEach(btn=>{
   btn.addEventListener('click', ()=> selectTool(btn.dataset.tool));
@@ -870,7 +884,7 @@ function tryPolish(dt){
   if(!uv) return;
   const t = TOOLS[currentTool];
   // Strength scaled by dt to feel framerate-invariant.
-  polish.paint(uv, t.channel, t.sign, t.strength*dt, t.radius);
+  polish.paint(uv, t.channel, t.sign, t.strength*dt, t.rU, t.rV);
 
   // SFX with rate-limit
   scrubAccum += dt;
@@ -1020,8 +1034,15 @@ function updatePlay(dt){
   tryPolish(dt);
   updateGauges();
 
-  // gentle turd idle rotation when not interacting
-  if(!pointerDown) turdMesh.rotation.y += dt*0.15;
+  // WASD manual rotation (W/S = pitch, A/D = yaw)
+  const ROT = 2.2;
+  if(wasd.a) turdMesh.rotation.y -= ROT*dt;
+  if(wasd.d) turdMesh.rotation.y += ROT*dt;
+  if(wasd.w) turdMesh.rotation.x -= ROT*dt;
+  if(wasd.s) turdMesh.rotation.x += ROT*dt;
+  // idle slow spin when no input
+  const anyWasd = wasd.w||wasd.a||wasd.s||wasd.d;
+  if(!anyWasd && !pointerDown) turdMesh.rotation.y += dt*0.15;
 
   if(timeLeft<=0){
     SFX.buzz();
