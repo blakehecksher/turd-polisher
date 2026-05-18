@@ -1,0 +1,1163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<title>TURD POLISHER</title>
+<style>
+  :root{
+    --brown:#5b3a1a; --gold:#ffd84a; --hot:#ff3b6b; --ink:#1a0f06;
+    --cream:#fff3d0; --green:#7ee787;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{width:100%; height:100%; overflow:hidden; background:#000; color:var(--cream);
+    font-family: "Impact","Anton","Arial Black",system-ui,sans-serif; letter-spacing:.02em;
+    user-select:none;}
+  canvas{position:fixed; inset:0; display:block;}
+  .hidden{display:none !important;}
+  .overlay{position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:24px; z-index:50; pointer-events:auto;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.2), rgba(0,0,0,.65));
+    text-shadow: 4px 4px 0 var(--ink);}
+  .overlay h1{font-size:clamp(48px,11vw,140px); color:var(--gold);
+    -webkit-text-stroke:3px var(--ink); transform:rotate(-3deg);}
+  .overlay p{font-size:clamp(16px,2.4vw,28px); color:#fff;}
+  .overlay button{
+    font: inherit; font-size:clamp(20px,3vw,36px); padding:18px 36px;
+    background:var(--hot); color:#fff; border:6px solid var(--ink);
+    border-radius:14px; cursor:pointer; transform:rotate(-2deg);
+    box-shadow: 0 8px 0 var(--ink), 0 0 0 6px var(--gold) inset;
+    letter-spacing:.05em;
+  }
+  .overlay button:hover{ transform:rotate(-2deg) translateY(-2px) scale(1.04); }
+  .overlay button:active{ transform:rotate(-2deg) translateY(4px); box-shadow:0 2px 0 var(--ink), 0 0 0 6px var(--gold) inset;}
+
+  #hud-top{position:fixed; top:14px; left:14px; right:14px; display:flex;
+    align-items:center; gap:14px; z-index:30; pointer-events:none;}
+  #round{font-size:28px; color:var(--gold); -webkit-text-stroke:2px var(--ink);
+    text-shadow:3px 3px 0 var(--ink); transform:rotate(-2deg);}
+  #timer-wrap{flex:1; height:22px; background:rgba(0,0,0,.5); border:4px solid var(--ink);
+    border-radius:14px; overflow:hidden; box-shadow:0 4px 0 var(--ink);}
+  #timer-bar{height:100%; width:100%;
+    background:linear-gradient(90deg, var(--green), var(--gold) 60%, var(--hot));
+    transition: width .12s linear;}
+
+  #gauges{position:fixed; left:14px; bottom:130px; display:flex; flex-direction:column;
+    gap:8px; z-index:30; pointer-events:none;}
+  .gauge{width:200px; height:26px; background:rgba(0,0,0,.55); border:3px solid var(--ink);
+    border-radius:10px; position:relative; box-shadow:0 4px 0 var(--ink); overflow:hidden;}
+  .gauge .bar{height:100%; width:0%; background:#fff; transition:width .1s linear;}
+  .gauge[data-c="0"] .bar{background:linear-gradient(90deg,#8b5a2b,#c08b50);}
+  .gauge[data-c="1"] .bar{background:linear-gradient(90deg,#aad,#cce);}
+  .gauge[data-c="2"] .bar{background:linear-gradient(90deg,#ff9,#ffd84a);}
+  .gauge[data-c="3"] .bar{background:linear-gradient(90deg,#fce,#fcf);}
+  .gauge span{position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; font-size:14px; color:#fff;
+    text-shadow:2px 2px 0 var(--ink); letter-spacing:.08em;}
+
+  #tools{position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    display:flex; gap:14px; z-index:30; padding:10px;
+    background:rgba(0,0,0,.45); border:4px solid var(--ink); border-radius:18px;
+    box-shadow:0 6px 0 var(--ink);}
+  .tool{
+    font:inherit; width:96px; height:96px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#fff; color:var(--ink); border:4px solid var(--ink); border-radius:14px;
+    cursor:pointer; padding:6px;
+    box-shadow:0 5px 0 var(--ink);
+    transition: transform .08s, box-shadow .08s, background .12s;
+  }
+  .tool .glyph{font-size:42px; line-height:1;}
+  .tool .label{font-size:14px; letter-spacing:.05em; margin-top:4px;}
+  .tool .key{position:absolute; transform:translate(34px,-34px);
+    font-size:12px; background:var(--ink); color:var(--gold); padding:2px 5px;
+    border-radius:4px;}
+  .tool[data-tool="brush"]{ background:#ffe1b3; }
+  .tool[data-tool="cloth"]{ background:#cfe3ff; }
+  .tool[data-tool="wax"]{   background:#fff0a8; }
+  .tool[data-tool="spray"]{ background:#ffd5f3; }
+  .tool.active{ transform:translateY(-6px) scale(1.06);
+    box-shadow:0 11px 0 var(--ink), 0 0 0 4px var(--gold) inset; }
+  .tool:active{ transform:translateY(2px); box-shadow:0 3px 0 var(--ink);}
+
+  #cursor{position:fixed; pointer-events:none; z-index:60; width:64px; height:64px;
+    transform:translate(-50%,-50%); font-size:48px; display:flex; align-items:center;
+    justify-content:center; filter: drop-shadow(2px 3px 0 #000);
+    transition: transform .06s;}
+  #cursor.click{ transform:translate(-50%,-50%) scale(.85) rotate(-12deg);}
+
+  #intro h1{ font-size:clamp(60px, 16vw, 220px); animation: pop .6s ease-out;}
+  @keyframes pop{
+    0%{ transform:scale(.1) rotate(-30deg); opacity:0;}
+    60%{ transform:scale(1.25) rotate(2deg); opacity:1;}
+    100%{ transform:scale(1) rotate(-3deg);}
+  }
+
+  #grade-letter{ font-size:clamp(120px, 30vw, 380px); color:var(--gold);
+    -webkit-text-stroke:6px var(--ink); text-shadow: 10px 10px 0 var(--ink);
+    transform:rotate(-6deg); animation: gradePop .8s cubic-bezier(.2,1.8,.4,1);}
+  @keyframes gradePop{
+    0%{ transform:scale(.1) rotate(-40deg); opacity:0;}
+    70%{ transform:scale(1.3) rotate(4deg); opacity:1;}
+    100%{ transform:scale(1) rotate(-6deg);}
+  }
+  #result-stats{ display:flex; flex-direction:column; gap:8px;
+    font-size:clamp(14px,2vw,22px); color:#fff; min-width:300px;}
+  #result-stats .row{ display:flex; justify-content:space-between;
+    background:rgba(0,0,0,.4); padding:6px 14px; border:3px solid var(--ink);
+    border-radius:8px;}
+
+  #fx{position:fixed; inset:0; pointer-events:none; z-index:25;}
+  .shake{ animation: shake .35s ease-out;}
+  @keyframes shake{
+    0%,100%{ transform:translate(0,0);}
+    20%{ transform:translate(-8px,4px);}
+    40%{ transform:translate(6px,-6px);}
+    60%{ transform:translate(-4px,8px);}
+    80%{ transform:translate(8px,-2px);}
+  }
+
+  @media (max-width: 720px){
+    #gauges{ bottom:160px;} .gauge{ width:140px; height:22px;}
+    .tool{ width:74px; height:74px;} .tool .glyph{ font-size:32px;}
+  }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div id="hud-top" class="hidden">
+  <div id="round">ROUND 1</div>
+  <div id="timer-wrap"><div id="timer-bar"></div></div>
+</div>
+
+<div id="gauges" class="hidden">
+  <div class="gauge" data-c="0"><div class="bar"></div><span>FILTH ↓</span></div>
+  <div class="gauge" data-c="1"><div class="bar"></div><span>SMOOTH ↑</span></div>
+  <div class="gauge" data-c="2"><div class="bar"></div><span>SHINE ↑</span></div>
+  <div class="gauge" data-c="3"><div class="bar"></div><span>SPARKLE ↑</span></div>
+</div>
+
+<div id="tools" class="hidden">
+  <button class="tool active" data-tool="brush"><span class="glyph">🪥</span><span class="label">Brush</span><span class="key">1</span></button>
+  <button class="tool"        data-tool="cloth"><span class="glyph">🧽</span><span class="label">Cloth</span><span class="key">2</span></button>
+  <button class="tool"        data-tool="wax"  ><span class="glyph">💧</span><span class="label">Wax</span><span class="key">3</span></button>
+  <button class="tool"        data-tool="spray"><span class="glyph">✨</span><span class="label">Spray</span><span class="key">4</span></button>
+</div>
+
+<div id="cursor" class="hidden">🪥</div>
+
+<div id="title" class="overlay">
+  <h1>TURD POLISHER</h1>
+  <p>Polish that turd to a mirror shine.</p>
+  <p style="font-size:14px; opacity:.8;">Drag to polish • 1-4 to switch tools</p>
+  <button id="start">PRESS TO POLISH</button>
+</div>
+
+<div id="intro" class="overlay hidden"><h1 id="intro-text">POLISH IT!</h1></div>
+
+<div id="result" class="overlay hidden">
+  <div id="grade-letter">?</div>
+  <div id="result-stats"></div>
+  <button id="next">NEXT ROUND</button>
+</div>
+
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+/* =====================================================================
+   UTIL
+   ===================================================================*/
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp = (a,b,t)=>a+(b-a)*t;
+const smooth = (t)=>t*t*(3-2*t);
+const rand = (a=1,b)=> b===undefined ? Math.random()*a : a+Math.random()*(b-a);
+const randPick = arr => arr[(Math.random()*arr.length)|0];
+const TAU = Math.PI*2;
+
+/* =====================================================================
+   AUDIO  (synthesized via WebAudio)
+   ===================================================================*/
+class Audio {
+  constructor(){ this.ac=null; }
+  ensure(){
+    if(!this.ac) this.ac = new (window.AudioContext||window.webkitAudioContext)();
+    if(this.ac.state==='suspended') this.ac.resume();
+  }
+  tone(freq,dur,{type='sine',vol=0.2,slide=null,delay=0}={}){
+    this.ensure();
+    const t0 = this.ac.currentTime + delay;
+    const o = this.ac.createOscillator();
+    const g = this.ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq,t0);
+    if(slide!==null) o.frequency.exponentialRampToValueAtTime(Math.max(20,slide), t0+dur);
+    g.gain.setValueAtTime(vol*0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(vol,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    o.connect(g).connect(this.ac.destination);
+    o.start(t0); o.stop(t0+dur+0.02);
+  }
+  noise(dur,{vol=0.15,filter=2000,q=2,delay=0}={}){
+    this.ensure();
+    const sr = this.ac.sampleRate, n = Math.floor(sr*dur);
+    const buf = this.ac.createBuffer(1,n,sr);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1-i/n);
+    const src = this.ac.createBufferSource(); src.buffer = buf;
+    const f = this.ac.createBiquadFilter();
+    f.type='bandpass'; f.frequency.value=filter; f.Q.value=q;
+    const g = this.ac.createGain(); g.gain.value=vol;
+    src.connect(f).connect(g).connect(this.ac.destination);
+    src.start(this.ac.currentTime + delay);
+  }
+  plop(){
+    this.tone(380,0.18,{type:'sine',vol:0.35,slide:90});
+    this.tone(140,0.22,{type:'sine',vol:0.25,slide:50,delay:0.02});
+    this.noise(0.28,{vol:0.18,filter:600,q:1,delay:0.05});
+  }
+  splash(){ this.noise(0.35,{vol:0.22,filter:1800,q:0.6}); }
+  scrub(){ this.noise(0.06,{vol:0.10,filter:1800,q:1.2}); }
+  wipe(){ this.noise(0.07,{vol:0.09,filter:700,q:1}); }
+  wax(){ this.tone(rand(620,780),0.05,{type:'triangle',vol:0.10}); }
+  spray(){
+    this.noise(0.04,{vol:0.06,filter:5000,q:0.8});
+    this.tone(rand(1200,1800),0.06,{type:'sine',vol:0.06});
+  }
+  zoom(){ this.tone(140,0.45,{type:'sawtooth',vol:0.14,slide:520}); }
+  countdown(){ this.tone(880,0.08,{type:'square',vol:0.18}); }
+  fanfare(grade){
+    const map = {
+      S:[523,659,784,1046,1318],
+      A:[523,659,784,1046],
+      B:[440,554,659,880],
+      C:[392,494,587,784],
+      D:[349,440,523],
+      F:[220,196,175]
+    };
+    const seq = map[grade]||map.C;
+    seq.forEach((f,i)=> this.tone(f,0.45,{type:'square',vol:0.10,delay:i*0.10}));
+  }
+  buzz(){ this.tone(110,0.4,{type:'sawtooth',vol:0.18,slide:80}); }
+}
+const SFX = new Audio();
+
+/* =====================================================================
+   PROCEDURAL TEXTURES (sprites)
+   ===================================================================*/
+function makeSparkleTex(){
+  const c=document.createElement('canvas'); c.width=c.height=64;
+  const g=c.getContext('2d');
+  const grd=g.createRadialGradient(32,32,0,32,32,30);
+  grd.addColorStop(0,'rgba(255,255,255,1)');
+  grd.addColorStop(0.4,'rgba(255,240,160,.7)');
+  grd.addColorStop(1,'rgba(255,200,80,0)');
+  g.fillStyle=grd; g.beginPath(); g.arc(32,32,30,0,TAU); g.fill();
+  g.strokeStyle='rgba(255,255,255,.95)'; g.lineWidth=3;
+  g.beginPath(); g.moveTo(32,4); g.lineTo(32,60); g.moveTo(4,32); g.lineTo(60,32); g.stroke();
+  g.lineWidth=2; g.beginPath(); g.moveTo(12,12); g.lineTo(52,52); g.moveTo(52,12); g.lineTo(12,52); g.stroke();
+  const t = new THREE.CanvasTexture(c); t.needsUpdate=true; return t;
+}
+function makeDropletTex(){
+  const c=document.createElement('canvas'); c.width=c.height=32;
+  const g=c.getContext('2d');
+  const grd=g.createRadialGradient(16,12,2,16,18,14);
+  grd.addColorStop(0,'rgba(255,255,255,.95)');
+  grd.addColorStop(0.5,'rgba(140,200,255,.9)');
+  grd.addColorStop(1,'rgba(60,130,210,0)');
+  g.fillStyle=grd; g.beginPath(); g.arc(16,18,14,0,TAU); g.fill();
+  return new THREE.CanvasTexture(c);
+}
+function makeConfettiTex(color){
+  const c=document.createElement('canvas'); c.width=c.height=16;
+  const g=c.getContext('2d');
+  g.fillStyle=color; g.fillRect(0,0,16,16);
+  g.fillStyle='rgba(255,255,255,.4)'; g.fillRect(0,0,16,4);
+  return new THREE.CanvasTexture(c);
+}
+
+const SPARKLE_TEX = makeSparkleTex();
+const DROPLET_TEX = makeDropletTex();
+const CONFETTI_TEX = ['#ff3b6b','#ffd84a','#7ee787','#5fb6ff','#ff9ad7','#ffffff'].map(makeConfettiTex);
+
+/* =====================================================================
+   TURD GEOMETRY (parametric coil + noise displacement)
+   ===================================================================*/
+function buildTurdGeometry(archetype='coil', seed=Math.random()){
+  let pts=[];
+  if(archetype==='coil'){
+    const coils = 3.2, segs = 240;
+    for(let i=0;i<=segs;i++){
+      const t = i/segs;
+      const r = lerp(1.15, 0.05, t*t);
+      const y = lerp(-0.6, 1.7, t);
+      const a = t * coils * TAU;
+      pts.push(new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r));
+    }
+  } else if(archetype==='spiral'){
+    const coils = 4.4, segs = 260;
+    for(let i=0;i<=segs;i++){
+      const t = i/segs;
+      const r = lerp(1.0, 0.04, Math.pow(t,1.6));
+      const y = lerp(-0.5, 1.9, t);
+      const a = t * coils * TAU;
+      pts.push(new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r));
+    }
+  } else if(archetype==='logger'){
+    const segs = 80;
+    for(let i=0;i<=segs;i++){
+      const t = i/segs;
+      const a = t * TAU * 0.4;
+      const r = 0.2*Math.sin(t*Math.PI);
+      pts.push(new THREE.Vector3(Math.cos(a)*r, lerp(-0.6, 1.5, t), Math.sin(a)*r));
+    }
+  } else { // blob: short coil, fat
+    const coils = 1.4, segs = 120;
+    for(let i=0;i<=segs;i++){
+      const t = i/segs;
+      const r = lerp(0.6, 0.04, Math.pow(t,1.8));
+      const y = lerp(-0.4, 1.2, t);
+      const a = t * coils * TAU;
+      pts.push(new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r));
+    }
+  }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tubularSegs = 320, radialSegs = 28;
+  // Custom radius along curve
+  const geo = new THREE.TubeGeometry(curve, tubularSegs, 0.55, radialSegs, false);
+
+  // Apply per-vertex radius scaling + noise displacement.
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const uv = geo.attributes.uv;
+  // Hash-based noise
+  const rnd = mulberry32(Math.floor(seed*1e9));
+  const noiseSeed = rnd()*1000;
+  for(let i=0;i<pos.count;i++){
+    const u = uv.getX(i); // along length
+    // Taper: bigger at base, pointed tip
+    const baseR = archetype==='logger' ? lerp(0.42, 0.34, Math.abs(u-0.5)*2)
+                                       : lerp(0.55, 0.06, Math.pow(u, 1.4));
+    // Tube was built at radius 0.55 — find current offset from curve and rescale.
+    // Get curve point at u
+    const cp = curve.getPointAt(u);
+    const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
+    let ox = px-cp.x, oy = py-cp.y, oz = pz-cp.z;
+    const ol = Math.hypot(ox,oy,oz) || 1;
+    const targetR = baseR;
+    ox = ox/ol; oy = oy/ol; oz = oz/ol;
+    // Add organic noise
+    const n = noise3(ox*3+noiseSeed, oy*3, oz*3+u*8);
+    const bump = (n-0.5) * 0.10 * (1 - Math.pow(u,4));
+    const radial = targetR + bump;
+    pos.setXYZ(i, cp.x + ox*radial, cp.y + oy*radial, cp.z + oz*radial);
+  }
+  geo.computeVertexNormals();
+  // Cap the bottom hole with a fan
+  // (TubeGeometry leaves ends open; just close visually by translating into bowl)
+  return geo;
+}
+// Tiny PRNG + value noise
+function mulberry32(a){
+  return function(){ let t=a+=0x6D2B79F5; t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; };
+}
+function hash3(x,y,z){
+  let h = Math.sin(x*127.1 + y*311.7 + z*74.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+function noise3(x,y,z){
+  const xi=Math.floor(x), yi=Math.floor(y), zi=Math.floor(z);
+  const xf=x-xi, yf=y-yi, zf=z-zi;
+  const u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf), w=zf*zf*(3-2*zf);
+  function L(x0,y0,z0){
+    return lerp(
+      lerp(lerp(hash3(xi+x0,yi+y0,zi+z0), hash3(xi+x0+1,yi+y0,zi+z0), u),
+           lerp(hash3(xi+x0,yi+y0+1,zi+z0), hash3(xi+x0+1,yi+y0+1,zi+z0), u), v),
+      lerp(lerp(hash3(xi+x0,yi+y0,zi+z0+1), hash3(xi+x0+1,yi+y0,zi+z0+1), u),
+           lerp(hash3(xi+x0,yi+y0+1,zi+z0+1), hash3(xi+x0+1,yi+y0+1,zi+z0+1), u), v),
+      w
+    );
+  }
+  return L(0,0,0);
+}
+
+/* =====================================================================
+   TURD SHADER
+   ===================================================================*/
+const TURD_VERT = `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vViewDir;
+  void main(){
+    vUv = uv;
+    vec4 wp = modelMatrix * vec4(position,1.0);
+    vWorldPos = wp.xyz;
+    vNormal = normalize(mat3(modelMatrix) * normal);
+    vViewDir = normalize(cameraPosition - wp.xyz);
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+const TURD_FRAG = `
+  precision highp float;
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  varying vec3 vWorldPos;
+  varying vec3 vViewDir;
+
+  uniform sampler2D uPolish;
+  uniform float uTime;
+  uniform vec3 uLight;
+  uniform vec3 uRim;
+  uniform float uCorn;   // 0..1, corn modifier
+  uniform float uGlitter; // 0..1, pre-glittered
+
+  // Hash + value noise in shader
+  float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+  float vnoise(vec2 p){
+    vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f);
+    return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),
+               mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x), u.y);
+  }
+  float fbm(vec2 p){
+    float v=0.0, a=0.5;
+    for(int i=0;i<4;i++){ v+=a*vnoise(p); p*=2.0; a*=0.5; }
+    return v;
+  }
+
+  void main(){
+    vec4 P = texture2D(uPolish, vUv);
+    float filth   = P.r;
+    float rough   = P.g;   // 1 = rough, 0 = smooth
+    float gloss   = P.b;
+    float sparkle = P.a;
+
+    // base brown variation
+    vec3 c1 = vec3(0.42,0.24,0.10);
+    vec3 c2 = vec3(0.28,0.16,0.06);
+    vec3 c3 = vec3(0.55,0.36,0.18);
+    float bigN = fbm(vUv*vec2(6.0,3.0));
+    vec3 col = mix(c2, c1, bigN);
+    col = mix(col, c3, smoothstep(0.65, 0.85, bigN));
+
+    // Filth = darker specks that fade as brush works
+    float spots = smoothstep(0.55, 0.80, fbm(vUv*vec2(40.0,18.0)+13.0));
+    col = mix(col, vec3(0.10,0.05,0.02), spots * filth * 0.85);
+    // Streaks of grime
+    float streak = smoothstep(0.7,0.9, vnoise(vUv*vec2(8.0,80.0)));
+    col = mix(col, vec3(0.18,0.10,0.04), streak*filth*0.5);
+
+    // Bump from roughness
+    vec3 N = normalize(vNormal);
+    float bumpAmt = rough * 0.85;
+    float bN = fbm(vUv*vec2(35.0,16.0));
+    float bX = fbm(vUv*vec2(35.0,16.0)+vec2(0.07,0));
+    float bY = fbm(vUv*vec2(35.0,16.0)+vec2(0,0.07));
+    vec3 bumpVec = vec3((bN-bX),(bN-bY),0.0)*bumpAmt*5.0;
+    N = normalize(N + bumpVec*0.4);
+
+    // Lighting (warm key + cool fill)
+    vec3 L = normalize(uLight);
+    float diff = max(dot(N,L),0.0);
+    float fill = max(dot(N, vec3(-0.3,0.4,-0.6)),0.0);
+    vec3 lit = col * (0.35 + 0.75*diff) + col * fill * 0.18;
+
+    // Specular (gloss)
+    vec3 V = normalize(vViewDir);
+    vec3 H = normalize(L+V);
+    float shin = mix(8.0, 220.0, gloss);
+    float spec = pow(max(dot(N,H),0.0), shin) * mix(0.05, 1.6, gloss);
+    spec *= (1.0 - rough*0.6);
+    lit += vec3(1.0,0.97,0.85) * spec;
+
+    // Rim
+    float rim = pow(1.0 - max(dot(N,V),0.0), 2.2);
+    lit += uRim * rim * 0.35;
+
+    // Sparkle: animated star points scattered where sparkle high
+    float sp = 0.0;
+    for(int i=0;i<3;i++){
+      vec2 off = vec2(float(i)*7.13, float(i)*3.71);
+      float seed = vnoise(vUv*vec2(80.0,40.0)+off + floor(uTime*4.0+float(i)));
+      sp += step(0.985, seed);
+    }
+    lit += vec3(1.0,0.95,0.6) * sp * sparkle * 1.6;
+
+    // Modifier: corn (yellow flecks)
+    if(uCorn>0.0){
+      float corn = step(0.94, vnoise(vUv*vec2(60.0,28.0)+7.0));
+      lit = mix(lit, vec3(1.0,0.9,0.35), corn*uCorn*0.85);
+    }
+    // Modifier: glitter baseline
+    if(uGlitter>0.0){
+      float gl = step(0.97, vnoise(vUv*vec2(120.0,60.0) + uTime*0.5));
+      lit += vec3(1.0,0.8,1.0)*gl*uGlitter;
+    }
+
+    gl_FragColor = vec4(lit, 1.0);
+  }
+`;
+
+/* =====================================================================
+   POLISH TEXTURE (RGBA8 painted via raycast)
+     R = filth (1 init, 0 clean)    -- brush removes
+     G = roughness (1 init, 0 smooth) -- cloth removes
+     B = gloss (0 init, 1 max)      -- wax adds
+     A = sparkle (0 init, 1 max)    -- spray adds
+   ===================================================================*/
+const TEX_W = 256, TEX_H = 128;
+class PolishTexture {
+  constructor(){
+    this.data = new Uint8Array(TEX_W*TEX_H*4);
+    this.tex = new THREE.DataTexture(this.data, TEX_W, TEX_H, THREE.RGBAFormat, THREE.UnsignedByteType);
+    this.tex.wrapS = THREE.ClampToEdgeWrapping;
+    this.tex.wrapT = THREE.RepeatWrapping;
+    this.tex.minFilter = THREE.LinearFilter;
+    this.tex.magFilter = THREE.LinearFilter;
+    this.tex.generateMipmaps = false;
+    this.reset();
+  }
+  reset(filthBase=1.0){
+    for(let i=0;i<this.data.length;i+=4){
+      this.data[i  ] = 255*filthBase; // filth
+      this.data[i+1] = 255;            // roughness
+      this.data[i+2] = 0;              // gloss
+      this.data[i+3] = 0;              // sparkle
+    }
+    this.tex.needsUpdate = true;
+  }
+  paint(uv, channel, sign, strength, radius){
+    const cx = uv.x * TEX_W;
+    const cy = uv.y * TEX_H;
+    const r = radius;
+    const r2 = r*r;
+    const y0 = Math.floor(cy - r), y1 = Math.ceil(cy + r);
+    const x0 = Math.max(0, Math.floor(cx - r));
+    const x1 = Math.min(TEX_W-1, Math.ceil(cx + r));
+    for(let yRaw = y0; yRaw <= y1; yRaw++){
+      const y = ((yRaw % TEX_H) + TEX_H) % TEX_H;
+      const dyRaw = yRaw - cy;
+      for(let x = x0; x <= x1; x++){
+        const dx = x - cx;
+        const d2 = dx*dx + dyRaw*dyRaw;
+        if(d2 > r2) continue;
+        const fall = (1 - d2/r2);
+        const w = fall*fall * strength;
+        const idx = (y*TEX_W + x)*4 + channel;
+        const cur = this.data[idx];
+        let next;
+        if(sign > 0) next = Math.min(255, cur + w*255);
+        else         next = Math.max(0, cur - w*255);
+        this.data[idx] = next;
+      }
+    }
+    this.tex.needsUpdate = true;
+  }
+  // average each channel (0..1)
+  stats(){
+    let r=0,g=0,b=0,a=0;
+    const n = TEX_W*TEX_H;
+    for(let i=0;i<this.data.length;i+=4){
+      r+=this.data[i]; g+=this.data[i+1]; b+=this.data[i+2]; a+=this.data[i+3];
+    }
+    return { filth:r/(n*255), rough:g/(n*255), gloss:b/(n*255), sparkle:a/(n*255) };
+  }
+}
+
+/* =====================================================================
+   TOOLS
+   ===================================================================*/
+const TOOLS = {
+  brush: { glyph:'🪥', channel:0, sign:-1, strength:7.5, radius:16, sfx:'scrub', color:0xffb160, particle:null },
+  cloth: { glyph:'🧽', channel:1, sign:-1, strength:6.5, radius:22, sfx:'wipe',  color:0x88bbff, particle:null },
+  wax:   { glyph:'💧', channel:2, sign: 1, strength:7.0, radius:18, sfx:'wax',   color:0xffd84a, particle:'wax' },
+  spray: { glyph:'✨', channel:3, sign: 1, strength:8.0, radius:24, sfx:'spray', color:0xff9ad7, particle:'sparkle' }
+};
+
+/* =====================================================================
+   PARTICLE SYSTEM (sprite pool)
+   ===================================================================*/
+class ParticlePool {
+  constructor(scene, count, texture, {size=0.18, blending=THREE.AdditiveBlending}={}){
+    this.scene = scene;
+    this.list = [];
+    for(let i=0;i<count;i++){
+      const mat = new THREE.SpriteMaterial({map:texture, transparent:true,
+        depthWrite:false, blending, color:0xffffff});
+      const s = new THREE.Sprite(mat);
+      s.scale.set(size,size,size);
+      s.visible = false;
+      scene.add(s);
+      this.list.push({sprite:s, mat, life:0, maxLife:1, vel:new THREE.Vector3(), gravity:0, spin:0, baseSize:size});
+    }
+  }
+  spawn(pos, {vel, life=0.7, color=0xffffff, size=null, gravity=0, spin=0}={}){
+    for(const p of this.list){
+      if(!p.sprite.visible){
+        p.sprite.position.copy(pos);
+        p.vel.copy(vel || new THREE.Vector3());
+        p.life = life; p.maxLife = life;
+        p.gravity = gravity; p.spin = spin;
+        p.mat.color.setHex(color);
+        p.sprite.material.opacity = 1;
+        const sz = size!=null?size:p.baseSize;
+        p.sprite.scale.set(sz,sz,sz);
+        p.sprite.visible = true;
+        return p;
+      }
+    }
+    return null;
+  }
+  update(dt){
+    for(const p of this.list){
+      if(!p.sprite.visible) continue;
+      p.life -= dt;
+      if(p.life<=0){ p.sprite.visible=false; continue; }
+      p.vel.y -= p.gravity*dt;
+      p.sprite.position.addScaledVector(p.vel, dt);
+      const a = p.life/p.maxLife;
+      p.sprite.material.opacity = Math.min(1, a*1.4);
+      p.sprite.material.rotation += p.spin*dt;
+    }
+  }
+}
+
+/* =====================================================================
+   SCENE
+   ===================================================================*/
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1224);
+
+// Soft gradient backdrop (large sphere with gradient material)
+{
+  const g = new THREE.SphereGeometry(60,32,32);
+  const m = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms:{},
+    vertexShader:`varying vec3 vP; void main(){ vP = position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);} `,
+    fragmentShader:`varying vec3 vP;
+      void main(){
+        float t = clamp(vP.y/60.0*0.5+0.5, 0.0, 1.0);
+        vec3 top = vec3(0.10,0.06,0.18);
+        vec3 mid = vec3(0.32,0.18,0.36);
+        vec3 bot = vec3(0.55,0.30,0.45);
+        vec3 c = mix(bot, mid, smoothstep(0.0,0.5,t));
+        c = mix(c, top, smoothstep(0.5,1.0,t));
+        gl_FragColor = vec4(c,1.0);
+      }`
+  });
+  scene.add(new THREE.Mesh(g,m));
+}
+
+// Lights
+const keyLight = new THREE.DirectionalLight(0xfff1d6, 1.25);
+keyLight.position.set(3,5,2);
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0x90b8ff, 0.45);
+fillLight.position.set(-4,2,-3);
+scene.add(fillLight);
+scene.add(new THREE.AmbientLight(0xffffff, 0.18));
+
+// Camera
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 4.6, 5.0);
+camera.lookAt(0, 0.5, 0);
+
+// Toilet (lathe profile)
+const toiletGroup = new THREE.Group();
+scene.add(toiletGroup);
+{
+  // bowl profile (outside-in)
+  const profile = [
+    new THREE.Vector2(0.00, -2.2),  // base center
+    new THREE.Vector2(0.90, -2.2),
+    new THREE.Vector2(1.10, -2.0),
+    new THREE.Vector2(1.20, -1.6),
+    new THREE.Vector2(1.65, -1.2),
+    new THREE.Vector2(1.85, -0.8),
+    new THREE.Vector2(1.95, -0.4),
+    new THREE.Vector2(2.00,  0.0),
+    new THREE.Vector2(2.05,  0.15),
+    new THREE.Vector2(1.95,  0.20),  // outer rim top
+    new THREE.Vector2(1.70,  0.10),  // inner rim
+    new THREE.Vector2(1.55, -0.10),
+    new THREE.Vector2(1.20, -0.40),
+    new THREE.Vector2(0.85, -0.80),
+    new THREE.Vector2(0.55, -1.20),
+    new THREE.Vector2(0.40, -1.60)
+  ];
+  const geo = new THREE.LatheGeometry(profile, 64);
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({color:0xf6f1ea, roughness:0.55, metalness:0.05});
+  const bowl = new THREE.Mesh(geo, mat);
+  toiletGroup.add(bowl);
+
+  // Water (animated plane just inside)
+  const wgeo = new THREE.CircleGeometry(1.4, 48);
+  const wmat = new THREE.ShaderMaterial({
+    transparent:true,
+    uniforms:{ uTime:{value:0}, uSplash:{value:0}, uSplashPos:{value:new THREE.Vector2()}},
+    vertexShader:`varying vec2 vUv; uniform float uTime; uniform float uSplash;
+      void main(){
+        vUv = uv;
+        vec3 p = position;
+        // ripples
+        float d = length(p.xy);
+        p.z += sin(d*8.0 - uTime*3.0)*0.012 + sin(uTime*2.0 + p.x*4.0)*0.01;
+        p.z += uSplash * exp(-d*3.0) * sin(d*20.0 - uTime*15.0)*0.25;
+        gl_Position = projectionMatrix*modelViewMatrix*vec4(p,1.0);
+      }`,
+    fragmentShader:`varying vec2 vUv; uniform float uTime;
+      void main(){
+        float d = length(vUv-0.5);
+        vec3 a = vec3(0.55,0.78,0.95);
+        vec3 b = vec3(0.20,0.40,0.65);
+        vec3 c = mix(a,b, smoothstep(0.0,0.5,d));
+        // caustic-ish lines
+        float ca = sin((vUv.x+vUv.y)*40.0+uTime*1.5)*0.5+0.5;
+        ca *= sin((vUv.x-vUv.y)*30.0+uTime*1.2)*0.5+0.5;
+        c += vec3(0.7,0.9,1.0)*ca*0.18*(1.0-d*1.4);
+        gl_FragColor = vec4(c, 0.92);
+      }`
+  });
+  const water = new THREE.Mesh(wgeo, wmat);
+  water.rotation.x = -Math.PI/2;
+  water.position.y = -0.10;
+  toiletGroup.add(water);
+  // attach refs
+  toiletGroup.userData.water = water;
+  toiletGroup.userData.waterMat = wmat;
+
+  // tank (block behind)
+  const tankGeo = new THREE.BoxGeometry(2.4, 2.0, 1.0);
+  const tank = new THREE.Mesh(tankGeo, new THREE.MeshStandardMaterial({color:0xeeece6, roughness:0.7}));
+  tank.position.set(0, 1.2, -2.0);
+  toiletGroup.add(tank);
+  const lidGeo = new THREE.BoxGeometry(2.5, 0.15, 1.1);
+  const lid = new THREE.Mesh(lidGeo, new THREE.MeshStandardMaterial({color:0xe6e1d6, roughness:0.6}));
+  lid.position.set(0, 2.2, -2.0);
+  toiletGroup.add(lid);
+
+  // Floor
+  const fgeo = new THREE.CircleGeometry(8, 48);
+  const fmat = new THREE.MeshStandardMaterial({color:0x2b1838, roughness:0.95});
+  const floor = new THREE.Mesh(fgeo, fmat);
+  floor.rotation.x = -Math.PI/2;
+  floor.position.y = -2.3;
+  scene.add(floor);
+}
+
+// Turd mesh container
+const turdGroup = new THREE.Group();
+scene.add(turdGroup);
+
+const polish = new PolishTexture();
+
+const turdUniforms = {
+  uPolish:{ value: polish.tex },
+  uTime:  { value: 0 },
+  uLight: { value: new THREE.Vector3(0.5,1.0,0.7).normalize() },
+  uRim:   { value: new THREE.Color(0xff9466) },
+  uCorn:    { value: 0 },
+  uGlitter: { value: 0 }
+};
+let turdMesh = null;
+
+function spawnTurd(archetype, modifiers={}){
+  if(turdMesh){ turdGroup.remove(turdMesh); turdMesh.geometry.dispose(); }
+  const geo = buildTurdGeometry(archetype, Math.random());
+  const mat = new THREE.ShaderMaterial({
+    uniforms: turdUniforms,
+    vertexShader: TURD_VERT,
+    fragmentShader: TURD_FRAG
+  });
+  turdMesh = new THREE.Mesh(geo, mat);
+  turdMesh.position.y = 0;
+  turdMesh.rotation.y = rand(0,TAU);
+  turdMesh.scale.setScalar(0.85);
+  turdGroup.add(turdMesh);
+  // Outline (back-side) for cartoony pop
+  const outlineMat = new THREE.MeshBasicMaterial({color:0x0a0703, side:THREE.BackSide});
+  const outline = new THREE.Mesh(geo, outlineMat);
+  outline.scale.multiplyScalar(1.045);
+  turdMesh.add(outline);
+
+  // Modifiers
+  turdUniforms.uCorn.value = modifiers.corn ? 1 : 0;
+  turdUniforms.uGlitter.value = modifiers.glitter ? 1 : 0;
+  polish.reset(modifiers.veryDirty ? 1.0 : (modifiers.lessDirty ? 0.6 : 0.85));
+}
+
+/* Particle pools */
+const sparklePool = new ParticlePool(scene, 80, SPARKLE_TEX, {size:0.12, blending:THREE.AdditiveBlending});
+const waxPool     = new ParticlePool(scene, 50, DROPLET_TEX, {size:0.10, blending:THREE.NormalBlending});
+const dropletPool = new ParticlePool(scene, 60, DROPLET_TEX, {size:0.18, blending:THREE.NormalBlending});
+const confettiPools = CONFETTI_TEX.map(t=> new ParticlePool(scene, 28, t, {size:0.16, blending:THREE.NormalBlending}));
+
+/* =====================================================================
+   INPUT  /  TOOL STATE
+   ===================================================================*/
+let currentTool = 'brush';
+const mouse = new THREE.Vector2();
+const ndc   = new THREE.Vector2();
+let pointerDown = false;
+let pointerInside = false;
+
+const raycaster = new THREE.Raycaster();
+
+function setCursorGlyph(g){ document.getElementById('cursor').textContent = g; }
+function selectTool(name){
+  if(!TOOLS[name]) return;
+  currentTool = name;
+  document.querySelectorAll('.tool').forEach(b=> b.classList.toggle('active', b.dataset.tool===name));
+  setCursorGlyph(TOOLS[name].glyph);
+}
+
+window.addEventListener('pointermove', e=>{
+  mouse.x = e.clientX; mouse.y = e.clientY;
+  ndc.x = (e.clientX/window.innerWidth)*2 - 1;
+  ndc.y = -(e.clientY/window.innerHeight)*2 + 1;
+  const cur = document.getElementById('cursor');
+  cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px';
+  pointerInside = true;
+});
+window.addEventListener('pointerleave', ()=>{ pointerInside=false; });
+window.addEventListener('pointerdown', e=>{
+  // Ignore if clicking on UI buttons
+  if(e.target && typeof e.target.closest==='function' && e.target.closest('button, .tool')) return;
+  pointerDown = true;
+  document.getElementById('cursor').classList.add('click');
+});
+window.addEventListener('pointerup', ()=>{
+  pointerDown = false;
+  document.getElementById('cursor').classList.remove('click');
+});
+
+window.addEventListener('keydown', e=>{
+  if(e.key==='1') selectTool('brush');
+  else if(e.key==='2') selectTool('cloth');
+  else if(e.key==='3') selectTool('wax');
+  else if(e.key==='4') selectTool('spray');
+});
+document.querySelectorAll('.tool').forEach(btn=>{
+  btn.addEventListener('click', ()=> selectTool(btn.dataset.tool));
+});
+
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+/* =====================================================================
+   PAINTING (raycast on turd, paint into polish texture)
+   ===================================================================*/
+let scrubAccum = 0;
+function tryPolish(dt){
+  if(!turdMesh || !pointerDown || !pointerInside) return;
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObject(turdMesh, false);
+  if(!hits.length) return;
+  const hit = hits[0];
+  const uv = hit.uv;
+  if(!uv) return;
+  const t = TOOLS[currentTool];
+  // Strength scaled by dt to feel framerate-invariant.
+  polish.paint(uv, t.channel, t.sign, t.strength*dt, t.radius);
+
+  // SFX with rate-limit
+  scrubAccum += dt;
+  if(scrubAccum > 0.08){
+    SFX[t.sfx] && SFX[t.sfx]();
+    scrubAccum = 0;
+  }
+  // Particles
+  if(t.particle==='sparkle'){
+    for(let i=0;i<2;i++){
+      const p = hit.point.clone().addScaledVector(hit.face.normal, 0.05);
+      sparklePool.spawn(p, {
+        vel: new THREE.Vector3(rand(-.4,.4), rand(.2,.9), rand(-.4,.4)),
+        life: rand(.5,.9),
+        size: rand(0.07,0.16),
+        color: 0xfff2a8
+      });
+    }
+  } else if(t.particle==='wax'){
+    const p = hit.point.clone().addScaledVector(hit.face.normal, 0.04);
+    waxPool.spawn(p, {
+      vel: new THREE.Vector3(rand(-.2,.2), rand(-.3,-.05), rand(-.2,.2)),
+      life: 0.5, size: 0.08, color: 0xfff1a0, gravity: 1.5
+    });
+  }
+}
+
+/* =====================================================================
+   STATE MACHINE
+   ===================================================================*/
+const STATE = { TITLE:'title', INTRO:'intro', DROP:'drop', PLAY:'play', RESULT:'result' };
+let state = STATE.TITLE;
+let stateT = 0;     // time inside state
+let round = 1;
+let timeLeft = 0;
+let roundDuration = 15;
+let dropAnim = null;
+
+const archetypes = ['coil'];
+const introTexts = ['POLISH IT!','SHINE IT!','MAKE IT GLEAM!','BUFF THAT BAD BOY!','MIRROR FINISH!','MAKE IT SPARKLE!'];
+
+function startGame(){
+  SFX.ensure();
+  round = 1;
+  document.getElementById('title').classList.add('hidden');
+  beginRound();
+}
+function beginRound(){
+  // Build difficulty modifiers
+  const arch = round<3 ? 'coil' : (round<5 ? randPick(['coil','spiral']) : randPick(['coil','spiral','blob','logger']));
+  const mods = {
+    veryDirty: round>=4 && Math.random()<0.5,
+    corn: round>=2 && Math.random()<0.4,
+    glitter: round>=3 && Math.random()<0.25,
+    lessDirty: false
+  };
+  roundDuration = clamp(16 - (round-1)*1.0, 8, 16);
+  timeLeft = roundDuration;
+  spawnTurd(arch, mods);
+
+  // Setup intro
+  document.getElementById('round').textContent = `ROUND ${round}`;
+  document.getElementById('intro-text').textContent = randPick(introTexts);
+  document.getElementById('intro').classList.remove('hidden');
+  document.getElementById('hud-top').classList.add('hidden');
+  document.getElementById('gauges').classList.add('hidden');
+  document.getElementById('tools').classList.add('hidden');
+  document.getElementById('cursor').classList.add('hidden');
+  document.getElementById('result').classList.add('hidden');
+  setState(STATE.INTRO);
+  SFX.countdown();
+}
+function setState(s){ state = s; stateT = 0; }
+
+function startDrop(){
+  document.getElementById('intro').classList.add('hidden');
+  // Move turd above bowl, animate drop
+  turdMesh.position.set(0, 5.5, 0);
+  turdMesh.rotation.set(rand(-.3,.3), rand(0,TAU), rand(-.3,.3));
+  // Camera dramatic angle
+  cameraFrom.copy(new THREE.Vector3(3.2, 5.6, 5.4));
+  cameraTo.copy(   new THREE.Vector3(0.0, 2.8, 5.2));
+  lookFrom.set(0, 1.2, 0);
+  lookTo.set(  0, 0.5, 0);
+  dropAnim = { t:0, dur:1.2, landed:false };
+  SFX.zoom();
+  setState(STATE.DROP);
+}
+
+const cameraFrom = new THREE.Vector3();
+const cameraTo   = new THREE.Vector3();
+const lookFrom = new THREE.Vector3();
+const lookTo   = new THREE.Vector3();
+const camLookTmp = new THREE.Vector3();
+
+function updateDrop(dt){
+  dropAnim.t += dt;
+  const t = clamp(dropAnim.t/dropAnim.dur, 0, 1);
+  const e = smooth(t);
+  camera.position.lerpVectors(cameraFrom, cameraTo, e);
+  camLookTmp.lerpVectors(lookFrom, lookTo, e);
+  camera.lookAt(camLookTmp);
+
+  // turd falls with quadratic accel
+  const fallT = clamp(dropAnim.t/0.55, 0, 1);
+  turdMesh.position.y = lerp(5.5, 0.05, fallT*fallT);
+  turdMesh.rotation.x += dt*4;
+  turdMesh.rotation.z += dt*3;
+  if(!dropAnim.landed && fallT>=1){
+    dropAnim.landed = true;
+    SFX.plop(); SFX.splash();
+    toiletGroup.userData.waterMat.uniforms.uSplash.value = 1.0;
+    // splash droplets
+    for(let i=0;i<22;i++){
+      const a = i/22 * TAU + rand(-.1,.1);
+      const r = rand(.3, 1.0);
+      dropletPool.spawn(new THREE.Vector3(Math.cos(a)*0.2, 0.0, Math.sin(a)*0.2), {
+        vel: new THREE.Vector3(Math.cos(a)*r*1.6, rand(2.0,3.4), Math.sin(a)*r*1.6),
+        life: rand(0.6,1.0), gravity: 8, size: rand(0.10, 0.22)
+      });
+    }
+    // screen shake
+    document.body.classList.add('shake');
+    setTimeout(()=>document.body.classList.remove('shake'), 380);
+    turdMesh.position.y = 0.05;
+    turdMesh.rotation.set(0, Math.random()*TAU, 0);
+  }
+  if(t>=1){ beginPlay(); }
+}
+
+function beginPlay(){
+  document.getElementById('hud-top').classList.remove('hidden');
+  document.getElementById('gauges').classList.remove('hidden');
+  document.getElementById('tools').classList.remove('hidden');
+  document.getElementById('cursor').classList.remove('hidden');
+  selectTool('brush');
+  setState(STATE.PLAY);
+}
+function updatePlay(dt){
+  timeLeft -= dt;
+  document.getElementById('timer-bar').style.width = `${clamp(timeLeft/roundDuration,0,1)*100}%`;
+  // Tick countdown beeps
+  const wholeNow = Math.ceil(timeLeft);
+  const wholePrev = Math.ceil(timeLeft + dt);
+  if(wholeNow!==wholePrev && wholeNow<=3 && wholeNow>0) SFX.countdown();
+
+  tryPolish(dt);
+  updateGauges();
+
+  // gentle turd idle rotation when not interacting
+  if(!pointerDown) turdMesh.rotation.y += dt*0.15;
+
+  if(timeLeft<=0){
+    SFX.buzz();
+    endRound();
+  }
+}
+
+function updateGauges(){
+  const s = polish.stats();
+  const filthClean = 1 - s.filth;      // higher better
+  const smooth     = 1 - s.rough;
+  const gloss      = s.gloss;
+  const sparkle    = s.sparkle;
+  document.querySelectorAll('.gauge').forEach(g=>{
+    const c = +g.dataset.c;
+    const v = c===0?filthClean : c===1?smooth : c===2?gloss : sparkle;
+    g.querySelector('.bar').style.width = (v*100).toFixed(1)+'%';
+  });
+}
+
+function endRound(){
+  const s = polish.stats();
+  const cleanliness = (1 - s.filth)*100;
+  const smoothness  = (1 - s.rough)*100;
+  const shine       = s.gloss*100;
+  const sparkle     = s.sparkle*100;
+  // Wax gauge weighted highest, brush solid, sparkle bonus
+  const score = clamp(
+    cleanliness*0.30 + smoothness*0.25 + shine*0.30 + sparkle*0.15
+  ,0,100);
+  let grade='F';
+  if(score>=95) grade='S';
+  else if(score>=85) grade='A';
+  else if(score>=72) grade='B';
+  else if(score>=55) grade='C';
+  else if(score>=38) grade='D';
+
+  showResult({score, grade, cleanliness, smoothness, shine, sparkle});
+}
+
+function showResult(r){
+  setState(STATE.RESULT);
+  document.getElementById('hud-top').classList.add('hidden');
+  document.getElementById('gauges').classList.add('hidden');
+  document.getElementById('tools').classList.add('hidden');
+  document.getElementById('cursor').classList.add('hidden');
+  const el = document.getElementById('result');
+  el.classList.remove('hidden');
+  document.getElementById('grade-letter').textContent = r.grade;
+  document.getElementById('grade-letter').style.animation='none';
+  void document.getElementById('grade-letter').offsetWidth;
+  document.getElementById('grade-letter').style.animation='';
+
+  const stats = document.getElementById('result-stats');
+  stats.innerHTML = `
+    <div class="row"><span>CLEAN</span><span>${r.cleanliness.toFixed(0)}%</span></div>
+    <div class="row"><span>SMOOTH</span><span>${r.smoothness.toFixed(0)}%</span></div>
+    <div class="row"><span>SHINE</span><span>${r.shine.toFixed(0)}%</span></div>
+    <div class="row"><span>SPARKLE</span><span>${r.sparkle.toFixed(0)}%</span></div>
+    <div class="row" style="background:#000;color:var(--gold)"><span>SCORE</span><span>${r.score.toFixed(0)}</span></div>
+  `;
+  // Confetti
+  for(let i=0;i<60;i++){
+    const pool = confettiPools[i%confettiPools.length];
+    pool.spawn(new THREE.Vector3(rand(-2,2), rand(3,4), rand(-1,1)), {
+      vel: new THREE.Vector3(rand(-1.2,1.2), rand(-.3,1.6), rand(-.6,.6)),
+      life: rand(2.0, 3.5), gravity: 2.4, size: rand(0.12,0.22), spin: rand(-6,6)
+    });
+  }
+  SFX.fanfare(r.grade);
+
+  // camera result orbit
+  cameraFrom.copy(camera.position);
+  cameraTo.set(2.5, 2.4, 3.0);
+  lookFrom.set(0,0.6,0); lookTo.set(0,0.6,0);
+  dropAnim = { t:0, dur:0.8, landed:true };
+}
+
+document.getElementById('start').addEventListener('click', startGame);
+document.getElementById('next').addEventListener('click', ()=>{
+  round++;
+  beginRound();
+});
+
+/* =====================================================================
+   MAIN LOOP
+   ===================================================================*/
+const clock = new THREE.Clock();
+function frame(){
+  const dt = Math.min(0.05, clock.getDelta());
+  turdUniforms.uTime.value += dt;
+  toiletGroup.userData.waterMat.uniforms.uTime.value += dt;
+  // splash damping
+  const sp = toiletGroup.userData.waterMat.uniforms.uSplash;
+  sp.value = Math.max(0, sp.value - dt*1.2);
+
+  if(state===STATE.INTRO){
+    stateT += dt;
+    if(stateT > 0.85) startDrop();
+  } else if(state===STATE.DROP){
+    stateT += dt;
+    updateDrop(dt);
+  } else if(state===STATE.PLAY){
+    stateT += dt;
+    updatePlay(dt);
+  } else if(state===STATE.RESULT){
+    stateT += dt;
+    // slow camera ease
+    if(dropAnim){
+      dropAnim.t += dt;
+      const t = clamp(dropAnim.t/dropAnim.dur,0,1);
+      camera.position.lerpVectors(cameraFrom, cameraTo, smooth(t));
+      camera.lookAt(0,0.6,0);
+    }
+    if(turdMesh) turdMesh.rotation.y += dt*0.6;
+  } else {
+    // title — slow drift
+    camera.position.x = Math.sin(performance.now()*0.0003)*0.8;
+    camera.position.z = 5.5 + Math.cos(performance.now()*0.0003)*0.3;
+    camera.lookAt(0, 0.8, 0);
+  }
+
+  sparklePool.update(dt);
+  waxPool.update(dt);
+  dropletPool.update(dt);
+  confettiPools.forEach(p=>p.update(dt));
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// Build a placeholder turd for title screen ambience
+spawnTurd('coil', {lessDirty:true});
+turdMesh.position.y = 0.05;
+selectTool('brush');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
