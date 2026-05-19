@@ -1,5 +1,5 @@
 # State
-_Last updated: 2026-05-18 2032_
+_Last updated: 2026-05-18 2053_
 
 ## Current focus
 Mobile-friendly pass complete for the playable single-file `index.html`.
@@ -31,6 +31,7 @@ Nothing. Mobile-friendly pass is complete.
 docs/plans/2026-05-18 2032 Plan - Mobile Friendly.md  (status: complete)
 
 ## Recent logs
+- docs/log/2026-05-18 2053 Git Ignore.md - replaced the blunt PNG ignore with repo-specific rules and untracked generated local artifacts.
 - docs/log/2026-05-18 2032 Mobile Friendly.md - added iPhone/touch layout, pointer handling, and rotate controls.
 - docs/log/2026-05-17 2322 Kickoff.md - project initialized, spec + plan written.
 - docs/log/2026-05-17 2338 v1 Build.md - single-pass build of `index.html`; smoke-tested end-to-end via Playwright.

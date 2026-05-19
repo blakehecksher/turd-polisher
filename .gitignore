@@ -1,0 +1,17 @@
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editor/project-local settings
+.idea/
+.vscode/
+
+# Local browser automation artifacts
+.playwright-mcp/
+
+# Generated local screenshots from manual/browser testing
+/title.png
+/intro.png
+/play.png
+/polished.png
+/result.png
