@@ -12,8 +12,8 @@
   *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
   html,body{width:100%; height:100%; overflow:hidden; background:#000; color:var(--cream);
     font-family: "Impact","Anton","Arial Black",system-ui,sans-serif; letter-spacing:.02em;
-    user-select:none;}
-  canvas{position:fixed; inset:0; display:block;}
+    user-select:none; position:fixed; inset:0; overscroll-behavior:none; touch-action:none;}
+  canvas{position:fixed; inset:0; display:block; touch-action:none;}
   .hidden{display:none !important;}
   .overlay{position:fixed; inset:0; display:flex; flex-direction:column; align-items:center;
     justify-content:center; gap:24px; z-index:50; pointer-events:auto;
@@ -32,7 +32,7 @@
   .overlay button:hover{ transform:rotate(-2deg) translateY(-2px) scale(1.04); }
   .overlay button:active{ transform:rotate(-2deg) translateY(4px); box-shadow:0 2px 0 var(--ink), 0 0 0 6px var(--gold) inset;}
 
-  #hud-top{position:fixed; top:14px; left:14px; right:14px; display:flex;
+  #hud-top{position:fixed; top:calc(14px + env(safe-area-inset-top)); left:calc(14px + env(safe-area-inset-left)); right:calc(14px + env(safe-area-inset-right)); display:flex;
     align-items:center; gap:14px; z-index:30; pointer-events:none;}
   #round{font-size:28px; color:var(--gold); -webkit-text-stroke:2px var(--ink);
     text-shadow:3px 3px 0 var(--ink); transform:rotate(-2deg);}
@@ -42,7 +42,7 @@
     background:linear-gradient(90deg, var(--green), var(--gold) 60%, var(--hot));
     transition: width .12s linear;}
 
-  #gauges{position:fixed; left:14px; bottom:130px; display:flex; flex-direction:column;
+  #gauges{position:fixed; left:calc(14px + env(safe-area-inset-left)); bottom:calc(130px + env(safe-area-inset-bottom)); display:flex; flex-direction:column;
     gap:8px; z-index:30; pointer-events:none;}
   .gauge{width:200px; height:26px; background:rgba(0,0,0,.55); border:3px solid var(--ink);
     border-radius:10px; position:relative; box-shadow:0 4px 0 var(--ink); overflow:hidden;}
@@ -55,7 +55,7 @@
     justify-content:center; font-size:14px; color:#fff;
     text-shadow:2px 2px 0 var(--ink); letter-spacing:.08em;}
 
-  #tools{position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+  #tools{position:fixed; bottom:calc(18px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     display:flex; gap:14px; z-index:30; padding:10px;
     background:rgba(0,0,0,.45); border:4px solid var(--ink); border-radius:18px;
     box-shadow:0 6px 0 var(--ink);}
@@ -79,6 +79,20 @@
   .tool.active{ transform:translateY(-6px) scale(1.06);
     box-shadow:0 11px 0 var(--ink), 0 0 0 4px var(--gold) inset; }
   .tool:active{ transform:translateY(2px); box-shadow:0 3px 0 var(--ink);}
+
+  #mobile-rotate{position:fixed; right:calc(12px + env(safe-area-inset-right));
+    bottom:calc(132px + env(safe-area-inset-bottom)); z-index:31; display:none;
+    grid-template-columns:repeat(3,52px); grid-template-rows:repeat(2,52px); gap:8px;
+    pointer-events:auto;}
+  .rot-btn{font:inherit; background:rgba(255,243,208,.94); color:var(--ink);
+    border:4px solid var(--ink); border-radius:12px; box-shadow:0 4px 0 var(--ink);
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    touch-action:none; user-select:none;}
+  .rot-btn[data-rot="up"]{grid-column:2; grid-row:1;}
+  .rot-btn[data-rot="left"]{grid-column:1; grid-row:2;}
+  .rot-btn[data-rot="down"]{grid-column:2; grid-row:2;}
+  .rot-btn[data-rot="right"]{grid-column:3; grid-row:2;}
+  .rot-btn:active,.rot-btn.active{transform:translateY(3px); box-shadow:0 1px 0 var(--ink); background:var(--gold);}
 
   #cursor{position:fixed; pointer-events:none; z-index:60; width:64px; height:64px;
     transform:translate(-50%,-50%); font-size:48px; display:flex; align-items:center;
@@ -108,6 +122,7 @@
     border-radius:8px;}
 
   #fx{position:fixed; inset:0; pointer-events:none; z-index:25;}
+  .mobile-hint{display:none;}
   .shake{ animation: shake .35s ease-out;}
   @keyframes shake{
     0%,100%{ transform:translate(0,0);}
@@ -118,8 +133,39 @@
   }
 
   @media (max-width: 720px){
-    #gauges{ bottom:160px;} .gauge{ width:140px; height:22px;}
-    .tool{ width:74px; height:74px;} .tool .glyph{ font-size:32px;}
+    .overlay{padding:calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); text-align:center;}
+    .overlay p{max-width:92vw;}
+    #hud-top{gap:8px;}
+    #round{font-size:clamp(18px,6vw,28px); white-space:nowrap;}
+    #timer-wrap{height:20px; border-width:3px;}
+    #gauges{left:calc(8px + env(safe-area-inset-left)); bottom:calc(126px + env(safe-area-inset-bottom)); gap:6px;}
+    .gauge{ width:min(42vw,150px); height:22px; border-width:2px;}
+    .gauge span{font-size:11px;}
+    #tools{width:calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+      justify-content:center; gap:7px; padding:8px; border-width:3px; border-radius:12px;}
+    .tool{ width:clamp(58px,21vw,70px); height:68px; border-width:3px; border-radius:10px; padding:4px;}
+    .tool .glyph{ font-size:28px;}
+    .tool .label{font-size:11px; margin-top:2px;}
+    .tool .key{display:none;}
+    #result-stats{min-width:min(300px,88vw);}
+  }
+  @media (hover:none), (pointer:coarse){
+    #cursor{display:none !important;}
+    #mobile-rotate:not(.hidden){display:grid;}
+    .desktop-hint{display:none;}
+    #title p[style]:not(.mobile-hint){display:none;}
+    .mobile-hint{display:block;}
+    .overlay button,.tool,.rot-btn{min-height:48px;}
+  }
+  @media (max-height: 480px) and (orientation: landscape){
+    #gauges{bottom:calc(88px + env(safe-area-inset-bottom));}
+    #tools{bottom:calc(8px + env(safe-area-inset-bottom));}
+    .tool{height:58px;}
+    .tool .glyph{font-size:24px;}
+    .tool .label{font-size:10px;}
+    #mobile-rotate{right:calc(8px + env(safe-area-inset-right)); bottom:calc(82px + env(safe-area-inset-bottom));
+      grid-template-columns:repeat(3,44px); grid-template-rows:repeat(2,44px); gap:6px;}
+    .rot-btn{font-size:16px; border-width:3px;}
   }
 </style>
 </head>
@@ -147,9 +193,17 @@
 
 <div id="cursor" class="hidden">🪥</div>
 
+<div id="mobile-rotate" class="hidden" aria-label="Rotate turd controls">
+  <button class="rot-btn" data-rot="up" aria-label="Tilt up">UP</button>
+  <button class="rot-btn" data-rot="left" aria-label="Rotate left">L</button>
+  <button class="rot-btn" data-rot="down" aria-label="Tilt down">DN</button>
+  <button class="rot-btn" data-rot="right" aria-label="Rotate right">R</button>
+</div>
+
 <div id="title" class="overlay">
   <h1>TURD POLISHER</h1>
   <p>Polish that turd to a mirror shine.</p>
+  <p class="mobile-hint" style="font-size:14px; opacity:.8;">Drag to polish, tap tools, rotate with the pad.</p>
   <p style="font-size:14px; opacity:.8;">Drag to polish • 1-4 switch tools • WASD rotate turd</p>
   <button id="start">PRESS TO POLISH</button>
 </div>
@@ -629,8 +683,13 @@ class ParticlePool {
    ===================================================================*/
 const canvas = document.getElementById('canvas');
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+const viewportSize = ()=>({
+  w: Math.max(1, Math.round(window.visualViewport?.width || window.innerWidth)),
+  h: Math.max(1, Math.round(window.visualViewport?.height || window.innerHeight))
+});
+const initialViewport = viewportSize();
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(initialViewport.w, initialViewport.h);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -669,7 +728,7 @@ scene.add(fillLight);
 scene.add(new THREE.AmbientLight(0xffffff, 0.18));
 
 // Camera
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(48, initialViewport.w/initialViewport.h, 0.1, 200);
 camera.position.set(0, 4.6, 5.0);
 camera.lookAt(0, 0.5, 0);
 
@@ -812,6 +871,8 @@ const mouse = new THREE.Vector2();
 const ndc   = new THREE.Vector2();
 let pointerDown = false;
 let pointerInside = false;
+let polishPointerId = null;
+const virtualRotate = {up:false, down:false, left:false, right:false};
 
 const raycaster = new THREE.Raycaster();
 
@@ -823,24 +884,48 @@ function selectTool(name){
   setCursorGlyph(TOOLS[name].glyph);
 }
 
-window.addEventListener('pointermove', e=>{
+function updatePointerFromEvent(e){
   mouse.x = e.clientX; mouse.y = e.clientY;
-  ndc.x = (e.clientX/window.innerWidth)*2 - 1;
-  ndc.y = -(e.clientY/window.innerHeight)*2 + 1;
+  const rect = canvas.getBoundingClientRect();
+  ndc.x = ((e.clientX - rect.left)/rect.width)*2 - 1;
+  ndc.y = -((e.clientY - rect.top)/rect.height)*2 + 1;
   const cur = document.getElementById('cursor');
   cur.style.left = e.clientX+'px'; cur.style.top = e.clientY+'px';
   pointerInside = true;
-});
-window.addEventListener('pointerleave', ()=>{ pointerInside=false; });
-window.addEventListener('pointerdown', e=>{
-  // Ignore if clicking on UI buttons
-  if(e.target && typeof e.target.closest==='function' && e.target.closest('button, .tool')) return;
-  pointerDown = true;
-  document.getElementById('cursor').classList.add('click');
-});
-window.addEventListener('pointerup', ()=>{
+}
+function isUiPointer(e){
+  return e.target && typeof e.target.closest==='function' && e.target.closest('button, .tool, #mobile-rotate');
+}
+function finishPolishPointer(){
   pointerDown = false;
+  polishPointerId = null;
   document.getElementById('cursor').classList.remove('click');
+}
+
+window.addEventListener('pointermove', e=>{
+  if(e.pointerType==='touch') e.preventDefault();
+  if(polishPointerId===null || polishPointerId===e.pointerId) updatePointerFromEvent(e);
+}, {passive:false});
+window.addEventListener('pointerleave', e=>{
+  if(e.pointerType!=='touch') pointerInside=false;
+});
+window.addEventListener('pointerdown', e=>{
+  if(isUiPointer(e)) return;
+  if(e.pointerType==='touch') e.preventDefault();
+  updatePointerFromEvent(e);
+  polishPointerId = e.pointerId;
+  pointerDown = true;
+  pointerInside = true;
+  if(e.target && e.target.setPointerCapture){
+    try{ e.target.setPointerCapture(e.pointerId); }catch(_){}
+  }
+  document.getElementById('cursor').classList.add('click');
+}, {passive:false});
+window.addEventListener('pointerup', e=>{
+  if(polishPointerId===e.pointerId || polishPointerId===null) finishPolishPointer();
+});
+window.addEventListener('pointercancel', e=>{
+  if(polishPointerId===e.pointerId || polishPointerId===null) finishPolishPointer();
 });
 
 const wasd = {w:false,a:false,s:false,d:false};
@@ -863,12 +948,32 @@ window.addEventListener('keyup', e=>{
 document.querySelectorAll('.tool').forEach(btn=>{
   btn.addEventListener('click', ()=> selectTool(btn.dataset.tool));
 });
-
-window.addEventListener('resize', ()=>{
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
+document.querySelectorAll('.rot-btn').forEach(btn=>{
+  const dir = btn.dataset.rot;
+  const set = value => {
+    virtualRotate[dir] = value;
+    btn.classList.toggle('active', value);
+  };
+  btn.addEventListener('pointerdown', e=>{
+    e.preventDefault();
+    set(true);
+    if(btn.setPointerCapture){
+      try{ btn.setPointerCapture(e.pointerId); }catch(_){}
+    }
+  }, {passive:false});
+  btn.addEventListener('pointerup', ()=>set(false));
+  btn.addEventListener('pointercancel', ()=>set(false));
+  btn.addEventListener('pointerleave', e=>{ if(e.pointerType!=='touch') set(false); });
 });
+
+function resizeViewport(){
+  const vp = viewportSize();
+  renderer.setSize(vp.w, vp.h);
+  camera.aspect = vp.w/vp.h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeViewport);
+window.visualViewport?.addEventListener('resize', resizeViewport);
 
 /* =====================================================================
    PAINTING (raycast on turd, paint into polish texture)
@@ -952,6 +1057,7 @@ function beginRound(){
   document.getElementById('hud-top').classList.add('hidden');
   document.getElementById('gauges').classList.add('hidden');
   document.getElementById('tools').classList.add('hidden');
+  document.getElementById('mobile-rotate').classList.add('hidden');
   document.getElementById('cursor').classList.add('hidden');
   document.getElementById('result').classList.add('hidden');
   setState(STATE.INTRO);
@@ -1019,6 +1125,7 @@ function beginPlay(){
   document.getElementById('hud-top').classList.remove('hidden');
   document.getElementById('gauges').classList.remove('hidden');
   document.getElementById('tools').classList.remove('hidden');
+  document.getElementById('mobile-rotate').classList.remove('hidden');
   document.getElementById('cursor').classList.remove('hidden');
   selectTool('brush');
   setState(STATE.PLAY);
@@ -1034,15 +1141,15 @@ function updatePlay(dt){
   tryPolish(dt);
   updateGauges();
 
-  // WASD manual rotation (W/S = pitch, A/D = yaw)
+  // Desktop keyboard and mobile rotate-pad controls.
   const ROT = 2.2;
-  if(wasd.a) turdMesh.rotation.y -= ROT*dt;
-  if(wasd.d) turdMesh.rotation.y += ROT*dt;
-  if(wasd.w) turdMesh.rotation.x -= ROT*dt;
-  if(wasd.s) turdMesh.rotation.x += ROT*dt;
+  if(wasd.a || virtualRotate.left) turdMesh.rotation.y -= ROT*dt;
+  if(wasd.d || virtualRotate.right) turdMesh.rotation.y += ROT*dt;
+  if(wasd.w || virtualRotate.up) turdMesh.rotation.x -= ROT*dt;
+  if(wasd.s || virtualRotate.down) turdMesh.rotation.x += ROT*dt;
   // idle slow spin when no input
-  const anyWasd = wasd.w||wasd.a||wasd.s||wasd.d;
-  if(!anyWasd && !pointerDown) turdMesh.rotation.y += dt*0.15;
+  const anyRotate = wasd.w||wasd.a||wasd.s||wasd.d||virtualRotate.up||virtualRotate.down||virtualRotate.left||virtualRotate.right;
+  if(!anyRotate && !pointerDown) turdMesh.rotation.y += dt*0.15;
 
   if(timeLeft<=0){
     SFX.buzz();
@@ -1088,6 +1195,7 @@ function showResult(r){
   document.getElementById('hud-top').classList.add('hidden');
   document.getElementById('gauges').classList.add('hidden');
   document.getElementById('tools').classList.add('hidden');
+  document.getElementById('mobile-rotate').classList.add('hidden');
   document.getElementById('cursor').classList.add('hidden');
   const el = document.getElementById('result');
   el.classList.remove('hidden');
